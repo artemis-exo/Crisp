@@ -1,0 +1,17 @@
+server:
+  port: 8080
+  address: 0.0.0.0
+spring:
+  application:
+    name: crisp-backend
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/crisp_db
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 55MB
+jwt:
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+  expiration: 86400000
