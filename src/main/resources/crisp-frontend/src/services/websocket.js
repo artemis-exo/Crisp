@@ -4,25 +4,29 @@ import { BACKEND_URL } from "./api";
 
 class WSService {
   constructor() {
-    this.client = null;
-    this.subscriptions = {};
-    this.pendingSubs = {};
-    this.onConnectCb = null;
+    this.client         = null;
+    this.subscriptions  = {};
+    this.pendingSubs    = {};
+    this.onConnectCb    = null;
     this.onDisconnectCb = null;
   }
 
   connect(token, onConnect, onDisconnect) {
-    this.onConnectCb = onConnect;
+    this.onConnectCb    = onConnect;
     this.onDisconnectCb = onDisconnect;
     this.client = new Client({
       webSocketFactory: () => new SockJS(`${BACKEND_URL}/ws`),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      reconnectDelay: 3000,
+      connectHeaders:   { Authorization: `Bearer ${token}` },
+      reconnectDelay:   3000,
       onConnect: () => {
         if (this.onConnectCb) this.onConnectCb();
-        Object.entries(this.pendingSubs).forEach(([key, { topic, cb }]) => this._doSub(key, topic, cb));
+        Object.entries(this.pendingSubs).forEach(([key, { topic, cb }]) =>
+          this._doSub(key, topic, cb));
       },
-      onDisconnect: () => { this.subscriptions = {}; if (this.onDisconnectCb) this.onDisconnectCb(); },
+      onDisconnect: () => {
+        this.subscriptions = {};
+        if (this.onDisconnectCb) this.onDisconnectCb();
+      },
       onStompError: (f) => console.error("STOMP:", f.headers?.message),
     });
     this.client.activate();
@@ -55,27 +59,50 @@ class WSService {
   unsubscribeRoom(roomId) {
     [`room:${roomId}`, `typing:${roomId}`].forEach((key) => {
       delete this.pendingSubs[key];
-      if (this.subscriptions[key]) { try { this.subscriptions[key].unsubscribe(); } catch (_) {} delete this.subscriptions[key]; }
+      if (this.subscriptions[key]) {
+        try { this.subscriptions[key].unsubscribe(); } catch (_) {}
+        delete this.subscriptions[key];
+      }
     });
   }
 
-  sendMessage(roomId, content, senderName, senderId, mediaFileId, mediaType, mediaName) {
+  // ── Publish helpers ───────────────────────────────────────────────────────
+  _publish(destination, body) {
     if (!this.client?.connected) return false;
-    this.client.publish({
-      destination: "/app/chat.sendMessage",
-      body: JSON.stringify({ roomId, content, senderName, senderId, type: "CHAT", mediaFileId, mediaType, mediaName }),
-    });
+    this.client.publish({ destination, body: JSON.stringify(body) });
     return true;
   }
 
+  sendMessage(roomId, content, senderName, senderId, mediaFileId, mediaType, mediaName,
+              replyToMessageId, replyToContent, replyToSenderName) {
+    return this._publish("/app/chat.sendMessage", {
+      roomId, content: content || "", senderName, senderId, type: "CHAT",
+      mediaFileId, mediaType, mediaName,
+      replyToMessageId, replyToContent, replyToSenderName,
+    });
+  }
+
   sendTyping(roomId, username, typing) {
-    if (!this.client?.connected) return;
-    this.client.publish({ destination: "/app/chat.typing", body: JSON.stringify({ roomId, username, typing }) });
+    this._publish("/app/chat.typing", { roomId, username, typing });
   }
 
   sendReaction(messageId, roomId, emoji) {
-    if (!this.client?.connected) return;
-    this.client.publish({ destination: "/app/chat.react", body: JSON.stringify({ messageId, roomId, emoji }) });
+    this._publish("/app/chat.react", { messageId, roomId, emoji });
+  }
+
+  // ── NEW: Edit message ─────────────────────────────────────────────────────
+  editMessage(messageId, roomId, newContent) {
+    return this._publish("/app/chat.edit", { messageId, roomId, newContent });
+  }
+
+  // ── NEW: Delete message ───────────────────────────────────────────────────
+  deleteMessage(messageId, roomId, forEveryone) {
+    return this._publish("/app/chat.delete", { messageId, roomId, forEveryone });
+  }
+
+  // ── NEW: Forward message ──────────────────────────────────────────────────
+  forwardMessage(messageId, targetRoomId, senderName) {
+    return this._publish("/app/chat.forward", { messageId, targetRoomId, senderName });
   }
 
   get connected() { return !!this.client?.connected; }

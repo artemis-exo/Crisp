@@ -17,13 +17,11 @@ export default function ChatApp() {
   const activeRoomRef = useRef(null);
   useEffect(() => { activeRoomRef.current = activeRoom; }, [activeRoom]);
 
-  // Load rooms
   useEffect(() => {
     if (!username) return;
     getUserRooms(username).then(({ data }) => setRooms(data)).catch(() => {});
   }, [username]);
 
-  // Connect WebSocket
   useEffect(() => {
     if (!token) return;
     wsService.connect(token,
@@ -45,7 +43,7 @@ export default function ChatApp() {
       const existing = prev[roomId] || [];
       if (replace) return { ...prev, [roomId]: msgs };
 
-      // Reaction update — replace message in-place by id
+      // Reaction / edit / delete update — replace in-place by id
       if (msgs.length === 1 && msgs[0].id) {
         const idx = existing.findIndex((m) => m.id === msgs[0].id);
         if (idx !== -1) {
@@ -58,7 +56,6 @@ export default function ChatApp() {
       return { ...prev, [roomId]: dedup([...existing, ...msgs]) };
     });
 
-    // Increment unread for rooms not currently open
     if (!replace && activeRoomRef.current?.id !== roomId) {
       setUnread((p) => ({ ...p, [roomId]: (p[roomId] || 0) + msgs.length }));
     }
@@ -80,7 +77,6 @@ export default function ChatApp() {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-crisp-bg">
-      {/* Sidebar — full screen on mobile when mobileView="list" */}
       <div className={`${mobileView === "list" ? "flex" : "hidden"} lg:flex w-full lg:w-80 flex-shrink-0 h-full`}>
         <Sidebar
           rooms={rooms}
@@ -93,10 +89,10 @@ export default function ChatApp() {
         />
       </div>
 
-      {/* Chat — full screen on mobile when mobileView="chat" */}
       <main className={`${mobileView === "chat" ? "flex" : "hidden"} lg:flex flex-1 flex-col min-w-0 h-full`}>
         <ChatWindow
           room={activeRoom}
+          rooms={rooms}
           messages={activeRoom ? messages[activeRoom.id] : null}
           onNewMessage={handleNewMessage}
           wsConnected={wsConnected}

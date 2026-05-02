@@ -1,8 +1,5 @@
 import axios from "axios";
 
-// Auto-detect backend URL from browser hostname
-// Your PC: localhost:3000 → backend = localhost:8080
-// Phone:   192.168.x.x:3000 → backend = 192.168.x.x:8080
 function getBackendURL() {
   if (process.env.REACT_APP_API_URL) return process.env.REACT_APP_API_URL;
   const host = window.location.hostname;
@@ -34,21 +31,27 @@ api.interceptors.response.use(
   }
 );
 
-// Auth
+// ── Auth ──────────────────────────────────────────────────────────────────────
 export const login    = (u, p)    => api.post("/api/auth/login",    { username: u, password: p });
 export const register = (u, p, f) => api.post("/api/auth/register", { username: u, password: p, fullName: f });
 
-// Rooms
-export const getUserRooms   = (u)    => api.get(`/api/rooms/user/${u}`);
-export const createRoom     = (body) => api.post("/api/rooms/create", body);
-export const getChatHistory = (id)   => api.get(`/api/rooms/${id}/history`);
+// ── Rooms ─────────────────────────────────────────────────────────────────────
+export const getUserRooms   = (u)      => api.get(`/api/rooms/user/${u}`);
+export const createRoom     = (body)   => api.post("/api/rooms/create", body);
+export const getChatHistory = (id)     => api.get(`/api/rooms/${id}/history`);
+export const searchMessages = (id, q)  => api.get(`/api/rooms/${id}/search?q=${encodeURIComponent(q)}`);
 
-// Users
-export const getAllUsers   = ()  => api.get("/api/users");
-export const getUserStatus = (u) => api.get(`/api/users/${u}`);
+// ── Users ─────────────────────────────────────────────────────────────────────
+export const getAllUsers      = ()       => api.get("/api/users");
+export const getUserStatus    = (u)      => api.get(`/api/users/${u}`);
+export const getPublicProfile = (u)      => api.get(`/api/users/${u}/profile`);
+export const updateProfile    = (body)   => api.put("/api/users/me", body);
+export const blockUser        = (u)      => api.post(`/api/users/${u}/block`);
+export const unblockUser      = (u)      => api.delete(`/api/users/${u}/block`);
+export const getBlockedUsers  = ()       => api.get("/api/users/me/blocked");
 
-// Media
-export const uploadMedia  = (file, onProgress) => {
+// ── Media ─────────────────────────────────────────────────────────────────────
+export const uploadMedia = (file, onProgress) => {
   const form = new FormData(); form.append("file", file);
   return api.post("/api/media/upload", form, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -65,10 +68,10 @@ export const uploadStoryMedia = (file) => {
 };
 export const getMediaUrl = (fileId) => fileId ? `${BACKEND_URL}/api/media/${fileId}` : null;
 
-// Stories
-export const getStories    = ()          => api.get("/api/stories");
-export const createStory   = (body)      => api.post("/api/stories", body);
-export const markStoryView = (storyId)   => api.post(`/api/stories/${storyId}/view`);
-export const deleteStory   = (storyId)   => api.delete(`/api/stories/${storyId}`);
+// ── Stories ───────────────────────────────────────────────────────────────────
+export const getStories    = ()        => api.get("/api/stories");
+export const createStory   = (body)    => api.post("/api/stories", body);
+export const markStoryView = (storyId) => api.post(`/api/stories/${storyId}/view`);
+export const deleteStory   = (storyId) => api.delete(`/api/stories/${storyId}`);
 
 export default api;
